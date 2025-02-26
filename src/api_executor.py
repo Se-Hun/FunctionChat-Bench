@@ -1,21 +1,19 @@
-import sys
 import json
-import openai
+import sys
 
+import openai
+import qwen_agent
+import vertexai
 from mistralai.client import MistralClient
 from mistralai.exceptions import MistralAPIException
 
-import vertexai
-
-from src.openai_utils import retry_on_limit
 from src.gemini_utils import (
+    call_gemini_model,
+    convert_gemini_to_response,
     convert_messages_gemini,
     convert_tools_gemini,
-    convert_gemini_to_response,
-    call_gemini_model
 )
-
-import qwen_agent
+from src.openai_utils import retry_on_limit
 
 
 class AbstractModelAPIExecutor:
@@ -27,6 +25,7 @@ class AbstractModelAPIExecutor:
         model (str): The model identifier.
         api_key (str): The API key for accessing the model.
     """
+
     def __init__(self, model, api_key):
         """
         Initializes the API executor with the specified model and API key.
@@ -58,9 +57,7 @@ class OpenaiModelAzureAPI(AbstractModelAPIExecutor):
         api_version (str): The version of the Azure OpenAI API to use.
         """
         super().__init__(model, api_key)  # 수정된 부분
-        self.client = openai.AzureOpenAI(azure_endpoint=api_base,
-                                         api_key=api_key,
-                                         api_version=api_version)
+        self.client = openai.AzureOpenAI(azure_endpoint=api_base, api_key=api_key, api_version=api_version)
         self.openai_chat_completion = retry_on_limit(self.client.chat.completions.create)
 
     def predict(self, api_request):
@@ -75,16 +72,14 @@ class OpenaiModelAzureAPI(AbstractModelAPIExecutor):
         while True:
             try:
                 response = self.openai_chat_completion(
-                    model=self.model,
-                    temperature=api_request['temperature'],
-                    messages=api_request['messages']
+                    model=self.model, temperature=api_request["temperature"], messages=api_request["messages"]
                 )
                 response = response.model_dump()
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
@@ -109,7 +104,7 @@ class OpenaiModelAPI(AbstractModelAPIExecutor):
         else:
             self.predict = self.predict_tool
 
-    def predict_tool(self, api_request):
+    def predict_tool(self, api_request, max_try_cnt: int = 10):
         """
         A method get model predictions for a request.
 
@@ -119,30 +114,32 @@ class OpenaiModelAPI(AbstractModelAPIExecutor):
         response = None
         try_cnt = 0
         while True:
+            if try_cnt >= max_try_cnt:
+                raise Exception("Max try count reached")
             try:
                 response = self.openai_chat_completion(
                     model=self.model,
-                    temperature=api_request['temperature'],
-                    messages=api_request['messages'],
-                    tools=api_request['tools']
+                    temperature=api_request["temperature"],
+                    messages=api_request["messages"],
+                    tools=api_request["tools"],
                 )
                 response = response.model_dump()
             except KeyError as e:
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 sys.exit(1)
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
-        response_output = response['choices'][0]['message']
+        response_output = response["choices"][0]["message"]
         return response_output
 
-    def predict_eval(self, api_request):
+    def predict_eval(self, api_request, max_try_cnt: int = 10):
         """
         A method get model predictions for a requests for evaluation purposes.
 
@@ -152,22 +149,22 @@ class OpenaiModelAPI(AbstractModelAPIExecutor):
         response = None
         try_cnt = 0
         while True:
+            if try_cnt >= max_try_cnt:
+                raise Exception("Max try count reached")
             try:
                 response = self.openai_chat_completion(
-                    model=self.model,
-                    temperature=api_request['temperature'],
-                    messages=api_request['messages']
+                    model=self.model, temperature=api_request["temperature"], messages=api_request["messages"]
                 )
                 response = response.model_dump()
             except KeyError as e:
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 sys.exit(1)
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
@@ -201,20 +198,20 @@ class SolarModelAPI(AbstractModelAPIExecutor):
             try:
                 response = self.openai_chat_completion(
                     model=self.model,
-                    temperature=api_request['temperature'],
-                    messages=api_request['messages'],
-                    tools=api_request['tools']
+                    temperature=api_request["temperature"],
+                    messages=api_request["messages"],
+                    tools=api_request["tools"],
                 )
                 response = response.model_dump()
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
-        response_output = response['choices'][0]['message']
+        response_output = response["choices"][0]["message"]
         return response_output
 
 
@@ -236,8 +233,8 @@ class MistralModelAPI(AbstractModelAPIExecutor):
     def remove_content_for_toolcalls(self, messages):
         new_messages = []
         for msg in messages:
-            if msg['role'] == 'assistant' and msg.get('content', None) and msg.get('tool_calls', None):
-                msg['content'] = ""
+            if msg["role"] == "assistant" and msg.get("content", None) and msg.get("tool_calls", None):
+                msg["content"] = ""
             new_messages.append(msg)
         return new_messages
 
@@ -253,35 +250,37 @@ class MistralModelAPI(AbstractModelAPIExecutor):
         while True:
             try:
                 print("max tokens * 32768")
-                print("temperature *", api_request['temperature'])
-                print("messages *", api_request['messages'])
-                print("tools *", api_request['tools'])
+                print("temperature *", api_request["temperature"])
+                print("messages *", api_request["messages"])
+                print("tools *", api_request["tools"])
                 response = self.openai_chat_completion(
                     model=self.model,
-                    temperature=api_request['temperature'],
+                    temperature=api_request["temperature"],
                     max_tokens=32768,
-                    messages=api_request['messages'],
-                    tools=api_request['tools']
+                    messages=api_request["messages"],
+                    tools=api_request["tools"],
                 )
                 response = response.model_dump()
                 print(">> response *", json.dumps(response, ensure_ascii=False))
             except MistralAPIException as e:
-                msg = json.loads(str(e).split('Message:')[1]).get('message')
-                if msg == 'Assistant message must have either content or tool_calls, but not both.':
-                    api_request['messages'] = self.remove_content_for_toolcalls(api_request['messages'])
+                msg = json.loads(str(e).split("Message:")[1]).get("message")
+                if msg == "Assistant message must have either content or tool_calls, but not both.":
+                    api_request["messages"] = self.remove_content_for_toolcalls(api_request["messages"])
                     print(f"[error] {msg}")
-                    print(json.dumps(api_request['messages'], ensure_ascii=False))
-                print(f".. retry api call .. {try_cnt} {msg} {msg == 'Assistant message must have either content or tool_calls, but not both.'}")
+                    print(json.dumps(api_request["messages"], ensure_ascii=False))
+                print(
+                    f".. retry api call .. {try_cnt} {msg} {msg == 'Assistant message must have either content or tool_calls, but not both.'}"
+                )
                 try_cnt += 1
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
-        response_output = response['choices'][0]['message']
+        response_output = response["choices"][0]["message"]
         return response_output
 
 
@@ -316,20 +315,20 @@ class InhouseModelAPI(AbstractModelAPIExecutor):
             try:
                 response = self.openai_chat_completion(
                     model=self.model_path,
-                    temperature=api_request['temperature'],
-                    messages=api_request['messages'],
-                    tools=api_request['tools']
+                    temperature=api_request["temperature"],
+                    messages=api_request["messages"],
+                    tools=api_request["tools"],
                 )
                 response = response.model_dump()
             except Exception as e:
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
-        response_output = response['choices'][0]['message']
+        response_output = response["choices"][0]["message"]
         return response_output
 
 
@@ -340,11 +339,7 @@ class Qwen2ModelAPI(AbstractModelAPIExecutor):
         print(f"api_key: {api_key}")
         if model_path is not None:
             model = model_path
-        self.client = qwen_agent.llm.get_chat_model({
-            'model': model,
-            'model_server': base_url,
-            'api_key': api_key
-        })
+        self.client = qwen_agent.llm.get_chat_model({"model": model, "model_server": base_url, "api_key": api_key})
 
     def predict(self, api_request):
         """
@@ -353,29 +348,36 @@ class Qwen2ModelAPI(AbstractModelAPIExecutor):
         Parameters:
         api_request (dict): The API request data for making predictions.
         """
-        messages = api_request['messages']
-        tools = [tool['function'] for tool in api_request['tools']]
+        messages = api_request["messages"]
+        tools = [tool["function"] for tool in api_request["tools"]]
         responses = []
 
         for idx, msg in enumerate(messages):
             print(msg)
-            if msg['role'] == 'tool':
-                messages[idx]['role'] = 'function'
-            if msg['role'] == 'assistant' and 'tool_calls' in msg:
-                messages[idx]['function_call'] = msg['tool_calls'][0]['function']
+            if msg["role"] == "tool":
+                messages[idx]["role"] = "function"
+            if msg["role"] == "assistant" and "tool_calls" in msg:
+                messages[idx]["function_call"] = msg["tool_calls"][0]["function"]
         for responses in self.client.chat(messages=messages, functions=tools, stream=True):
             continue
         response = responses[0]
         tools = None
-        if 'function_call' in response:
-            tools = [{'id': "qwen2-functioncall-random-id", 'function': response['function_call'], 'type': "function", 'index': None}]
+        if "function_call" in response:
+            tools = [
+                {
+                    "id": "qwen2-functioncall-random-id",
+                    "function": response["function_call"],
+                    "type": "function",
+                    "index": None,
+                }
+            ]
         return {
-            "content": response['content'],
-            "role": response['role'],
+            "content": response["content"],
+            "role": response["role"],
             "function_call": None,
             "tool_calls": tools,
             "tool_call_id": None,
-            "name": None
+            "name": None,
         }
 
 
@@ -402,9 +404,9 @@ class GeminiModelAPI(AbstractModelAPIExecutor):
         try_cnt = 0
         response = None
 
-        gemini_temperature = api_request['temperature']
-        gemini_system_instruction, gemini_messages = convert_messages_gemini(api_request['messages'])
-        gemini_tools = convert_tools_gemini(api_request['tools'])
+        gemini_temperature = api_request["temperature"]
+        gemini_system_instruction, gemini_messages = convert_messages_gemini(api_request["messages"])
+        gemini_tools = convert_tools_gemini(api_request["tools"])
 
         while True:
             try:
@@ -413,8 +415,9 @@ class GeminiModelAPI(AbstractModelAPIExecutor):
                     gemini_temperature=gemini_temperature,
                     gemini_system_instruction=gemini_system_instruction,
                     gemini_tools=gemini_tools,
-                    gemini_messages=gemini_messages)
-                gemini_response = response['candidates'][0]
+                    gemini_messages=gemini_messages,
+                )
+                gemini_response = response["candidates"][0]
                 if "content" not in gemini_response and gemini_response["finish_reason"] == "SAFETY":
                     response_output = {"role": "assistant", "content": None, "tool_calls": None}
                 else:
@@ -423,7 +426,7 @@ class GeminiModelAPI(AbstractModelAPIExecutor):
                 print(f".. retry api call .. {try_cnt}")
                 try_cnt += 1
                 print(e)
-                print(json.dumps(api_request['messages'], ensure_ascii=False))
+                print(json.dumps(api_request["messages"], ensure_ascii=False))
                 continue
             else:
                 break
@@ -436,7 +439,9 @@ class APIExecutorFactory:
     """
 
     @staticmethod
-    def get_model_api(model_name, api_key=None, model_path=None, base_url=None, gcloud_project_id=None, gcloud_location=None):
+    def get_model_api(
+        model_name, api_key=None, model_path=None, base_url=None, gcloud_project_id=None, gcloud_location=None
+    ):
         """
         Creates and returns an API executor for a given model by identifying the type of model and initializing the appropriate API class.
 
@@ -456,17 +461,17 @@ class APIExecutorFactory:
 
         The method uses the model name to determine which API executor class to instantiate and returns an object of that class.
         """
-        if model_name == 'inhouse':  # In-house developed model
+        if model_name == "inhouse":  # In-house developed model
             return InhouseModelAPI(model_name, api_key, base_url=base_url, model_path=model_path)
-        elif model_name.lower().startswith('qwen2'):  # Upstage developed model
+        elif model_name.lower().startswith("qwen2"):  # Alibaba developed model
             return Qwen2ModelAPI(model_name, api_key=api_key, base_url=base_url, model_path=model_path)
-        elif model_name.lower().startswith('solar'):  # Upstage developed model
+        elif model_name.lower().startswith("solar"):  # Upstage developed model
             return SolarModelAPI(model_name, api_key=api_key, base_url=base_url)
-        elif model_name.lower().startswith('gpt'):  # OpenAI developed model
+        elif model_name.lower().startswith("gpt"):  # OpenAI developed model
             return OpenaiModelAPI(model_name, api_key)
-        elif model_name.startswith('mistral'):  # Mistral developed model
+        elif model_name.startswith("mistral"):  # Mistral developed model
             return MistralModelAPI(model_name, api_key)
-        elif model_name.startswith('gemini'):  # Google developed model
+        elif model_name.startswith("gemini"):  # Google developed model
             return GeminiModelAPI(model_name, gcloud_project_id=gcloud_project_id, gcloud_location=gcloud_location)
         else:
             raise ValueError("Unsupported model name")

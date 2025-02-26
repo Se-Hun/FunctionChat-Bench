@@ -1,5 +1,7 @@
 import json
+
 from tqdm import tqdm
+
 from src import utils
 from src.api_executor import APIExecutorFactory
 
@@ -8,6 +10,7 @@ class ResponseHandler:
     """
     A class responsible for managing API responses, including loading cached responses.
     """
+
     def __init__(self, model, api_key, base_url, model_path, gcloud_project_id, gcloud_location):
         """
         Initializes the ResponseHandler with a specific API executor based on the model configuration.
@@ -20,10 +23,14 @@ class ResponseHandler:
             gcloud_project_id (str): Google Cloud project ID (if applicable).
             gcloud_location (str): Location of the Google Cloud project (if applicable).
         """
-        self.executor = APIExecutorFactory().get_model_api(model_name=model, api_key=api_key,
-                                                           base_url=base_url, model_path=model_path,
-                                                           gcloud_project_id=gcloud_project_id,
-                                                           gcloud_location=gcloud_location)
+        self.executor = APIExecutorFactory().get_model_api(
+            model_name=model,
+            api_key=api_key,
+            base_url=base_url,
+            model_path=model_path,
+            gcloud_project_id=gcloud_project_id,
+            gcloud_location=gcloud_location,
+        )
 
     def load_cached_response(self, predict_file_path, max_size):
         """
@@ -66,7 +73,7 @@ class ResponseHandler:
             outputs = self.load_cached_response(predict_file_path, len(api_request_list))
             if len(outputs) == len(api_request_list):
                 return outputs
-        write_option = 'a' if reset is False else 'w'
+        write_option = "a" if reset is False else "w"
         start_index = len(outputs)
         # 2. fetch
         print(f" ** start index : {start_index} ..(reset is {reset})")
@@ -77,7 +84,7 @@ class ResponseHandler:
             response_output = self.executor.predict(api_request)
             outputs.append(response_output)
             # 3. save
-            fp.write(f'{json.dumps(response_output, ensure_ascii=False)}\n')
+            fp.write(f"{json.dumps(response_output, ensure_ascii=False)}\n")
         fp.close()
         print(f"[[model response file : {predict_file_path}]]")
         return outputs
