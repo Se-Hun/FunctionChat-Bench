@@ -1,6 +1,7 @@
 import time
-import openai
 from functools import wraps
+
+import openai
 
 
 def retry_on_limit(func, retries=5, wait=120):
@@ -13,4 +14,5 @@ def retry_on_limit(func, retries=5, wait=120):
                 print(str(error))
                 time.sleep(wait)
         raise openai.RateLimitError
+
     return wrapper
