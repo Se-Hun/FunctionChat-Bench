@@ -1,4 +1,5 @@
 import click
+
 """
 This package is a collection of argument classes designed to support optional arguments using Click.
 """
@@ -15,6 +16,7 @@ DEFAULTS = {
     # gemini
     "gcloud_project_id": "user_gcloud_project_id",
     "gcloud_location": "user_gcloud_project_location",
+    "output_dir_name": "output",
 }
 
 
@@ -22,7 +24,7 @@ class DefaultBaseUrlPromptOptions(click.Option):
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['base_url']
+            return DEFAULTS["base_url"]
         return super().prompt_for_value(ctx)
 
 
@@ -30,43 +32,43 @@ class DefaultModelPathPromptOptions(click.Option):
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['model_path']
+            return DEFAULTS["model_path"]
         return super().prompt_for_value(ctx)
 
 
 class DefaultResetPromptOptions(click.Option):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('type', click.BOOL)
+        kwargs.setdefault("type", click.BOOL)
         super(DefaultResetPromptOptions, self).__init__(*args, **kwargs)
 
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['reset']
+            return DEFAULTS["reset"]
         return super().prompt_for_value(ctx)
 
 
 class DefaultSamplePromptOptions(click.Option):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('type', click.BOOL)
+        kwargs.setdefault("type", click.BOOL)
         super(DefaultSamplePromptOptions, self).__init__(*args, **kwargs)
 
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['sample']
+            return DEFAULTS["sample"]
         return super().prompt_for_value(ctx)
 
 
 class DefaultDebugPromptOptions(click.Option):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('type', click.BOOL)
+        kwargs.setdefault("type", click.BOOL)
         super(DefaultDebugPromptOptions, self).__init__(*args, **kwargs)
 
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['debug']
+            return DEFAULTS["debug"]
         return super().prompt_for_value(ctx)
 
 
@@ -74,7 +76,7 @@ class DefaultGPidPromptOptions(click.Option):
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['gcloud_project_id']
+            return DEFAULTS["gcloud_project_id"]
         return super().prompt_for_value(ctx)
 
 
@@ -82,7 +84,7 @@ class DefaultGLocPromptOptions(click.Option):
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['gcloud_location']
+            return DEFAULTS["gcloud_location"]
         return super().prompt_for_value(ctx)
 
 
@@ -90,5 +92,13 @@ class DefaultApiKeyPromptOptions(click.Option):
     def prompt_for_value(self, ctx):
         q = ctx.obj.get("q")
         if q:
-            return DEFAULTS['api_key']
+            return DEFAULTS["api_key"]
+        return super().prompt_for_value(ctx)
+
+
+class DefaultOutputDirNamePromptOptions(click.Option):
+    def prompt_for_value(self, ctx):
+        q = ctx.obj.get("q")
+        if q:
+            return DEFAULTS["output_dir_name"]
         return super().prompt_for_value(ctx)

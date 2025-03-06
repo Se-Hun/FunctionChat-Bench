@@ -13,6 +13,7 @@ from src.default_click_type import (
     DefaultGLocPromptOptions,
     DefaultGPidPromptOptions,
     DefaultModelPathPromptOptions,
+    DefaultOutputDirNamePromptOptions,
     DefaultResetPromptOptions,
     DefaultSamplePromptOptions,
 )
@@ -62,6 +63,12 @@ def default_eval_options(f):
         help="only exact match(True, False)",
         cls=DefaultDebugPromptOptions,
     )(f)
+    f = click.option(
+        "--output_dir_name",
+        prompt="output directory name",
+        help="output directory name",
+        cls=DefaultOutputDirNamePromptOptions,
+    )(f)
     return f
 
 
@@ -96,17 +103,19 @@ def dialog(
     gcloud_project_id,
     gcloud_location,
     only_exact,
+    output_dir_name,
 ):
     eval_type = inspect.stack()[0][3]
     TEST_PREFIX = f"FunctionChat-{eval_type.capitalize()}"
 
     print(f"[[{model} {TEST_PREFIX} evaluate start]]")
-    utils.create_directory(f"{REPO_PATH}/output/")
+    output_dir_path = f"{REPO_PATH}/{output_dir_name}/"
+    utils.create_directory(output_dir_path)
 
-    request_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.input.jsonl"
-    predict_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.output.jsonl"
-    eval_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.eval.jsonl"
-    eval_log_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.eval_report.tsv"
+    request_file_path = f"{output_dir_path}{TEST_PREFIX}.input.jsonl"
+    predict_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.output.jsonl"
+    eval_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.eval.jsonl"
+    eval_log_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.eval_report.tsv"
 
     api_request_list = PayloadCreatorFactory.get_payload_creator(
         eval_type, temperature, system_prompt_path
@@ -137,18 +146,20 @@ def singlecall(
     only_exact,
     gcloud_project_id,
     gcloud_location,
+    output_dir_name,
 ):
 
     eval_type = inspect.stack()[0][3]
     TEST_PREFIX = f"FunctionChat-{eval_type.capitalize()}"
 
     print(f"[[{model} {TEST_PREFIX} {tools_type} evaluate start]]")
-    utils.create_directory(f"{REPO_PATH}/output/")
+    output_dir_path = f"{REPO_PATH}/{output_dir_name}/"
+    utils.create_directory(output_dir_path)
 
-    request_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.input.jsonl"
-    predict_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.{tools_type}.output.jsonl"
-    eval_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.{tools_type}.eval.jsonl"
-    eval_log_file_path = f"{REPO_PATH}/output/{TEST_PREFIX}.{model}.{tools_type}.eval_report.tsv"
+    request_file_path = f"{output_dir_path}{TEST_PREFIX}.input.jsonl"
+    predict_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.{tools_type}.output.jsonl"
+    eval_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.{tools_type}.eval.jsonl"
+    eval_log_file_path = f"{output_dir_path}{TEST_PREFIX}.{model}.{tools_type}.eval_report.tsv"
 
     api_request_list = PayloadCreatorFactory.get_payload_creator(
         eval_type, temperature, system_prompt_path

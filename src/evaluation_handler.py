@@ -21,7 +21,7 @@ from src.formatter import (
 CUR_PATH = os.path.dirname(os.path.abspath(__file__))
 REPO_PATH = "/".join(CUR_PATH.split("/")[:-1])
 # 이 부분에 OpenAI Request 로깅을 위해 코드를 추가함 ---------------------------------
-LOG_PATH = os.path.join(REPO_PATH, "openai_logs")
+LOG_PATH = os.path.join("/data", "shheo", "openai_logs")
 utils.create_directory(LOG_PATH)
 # 이 부분에 OpenAI Request 로깅을 위해 코드를 추가함 ---------------------------------
 
