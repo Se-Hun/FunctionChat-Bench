@@ -178,8 +178,19 @@ class DialogPayloadCreator(AbstractPayloadCreator):
             # test_input keys = ['dialog_num', 'tools_count', 'tools', 'turns']
             tools = test_input["tools"]
             for turn in test_input["turns"]:
-                messages = [{"role": "system", "content": self.system_prompt}]
-                messages.extend(turn["query"])
+                if self.system_prompt is not None and self.system_prompt.strip() != "":
+                    messages = [{"role": "system", "content": self.system_prompt}]  # TODO : 이게 원래 코드임!!
+                    # TODO : 잠깐 테스트를 위해 이렇게 해둠!! --------------------------------
+                    # messages = [
+                    #     {
+                    #         "role": "system",
+                    #         "content": "AI assistant로서, user와 한국어로 대화를 나누세요. 적합한 function이 있으면, 자체 지식으로 답하지 말고 function 호출을 통해 user의 요청을 해결하세요. function 호출에 필요한 파라미터 값을 임의로 생성하지 마세요. 필수 정보가 부족할 경우 user에게 질문해 정보를 얻으세요. 누락된 필수 정보가 여러가지이면, 각각을 모두 빠짐없이 구체적으로 요청하세요. 특별한 이유가 없다면, 파라미터 값을 생성할 때 user의 한국어 표현을 영어로 변경하지 마세요.",
+                    #     }
+                    # ]
+                    # TODO : 잠깐 테스트를 위해 이렇게 해둠!! --------------------------------
+                    messages.extend(turn["query"])
+                else:
+                    messages = turn["query"]
                 arguments = {
                     key: turn[key] for key in ["serial_num", "ground_truth", "acceptable_arguments", "type_of_output"]
                 }
